@@ -2,9 +2,9 @@ import { TRPCError } from "@trpc/server";
 import { nanoid } from "nanoid";
 import { z } from "zod";
 import { COOKIE_NAME } from "@shared/const";
-import { getSessionCookieOptions } from "./_core/cookies";
-import { systemRouter } from "./_core/systemRouter";
-import { publicProcedure, router } from "./_core/trpc";
+import { getSessionCookieOptions } from "./cookies";
+import { systemRouter } from "./systemRouter";
+import { publicProcedure, router } from "./trpc";
 import {
   cleanupExpiredVerifications,
   createEmailVerification,

@@ -4,7 +4,7 @@
  * with a fallback that logs the code to the console for development.
  */
 
-import { notifyOwner } from "./_core/notification";
+import { notifyOwner } from "./notification";
 
 export async function sendOTPEmail(email: string, code: string): Promise<void> {
   const subject = "Your ScholarScan Verification Code";

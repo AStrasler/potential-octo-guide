@@ -9,8 +9,8 @@ import {
   scans,
   users,
   verifiedSessions,
-} from "../drizzle/schema";
-import { ENV } from "./_core/env";
+} from "./schema";
+import { ENV } from "./env";
 
 let _db: ReturnType<typeof drizzle> | null = null;
 

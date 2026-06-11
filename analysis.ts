@@ -1,4 +1,4 @@
-import { invokeLLM } from "./_core/llm";
+import { invokeLLM } from "./llm";
 import { updateScanStatus, upsertScanResult } from "./db";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
