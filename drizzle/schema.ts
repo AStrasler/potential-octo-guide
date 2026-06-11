@@ -69,13 +69,13 @@ export const scanResults = mysqlTable("scan_results", {
   id: int("id").autoincrement().primaryKey(),
   scanId: int("scanId").notNull().unique(),
   // AI Detection
-  aiScore: float("aiScore"),
-  aiDetailsJson: json("aiDetailsJson"),
+  aiScore: float("aiScore"), // 0-100, probability of AI authorship
+  aiDetailsJson: json("aiDetailsJson"), // { sentences: [{text, score, startIdx, endIdx}], paragraphs: [{text, score}], summary: string }
   // Plagiarism
-  plagiarismScore: float("plagiarismScore"),
-  plagiarismDetailsJson: json("plagiarismDetailsJson"),
+  plagiarismScore: float("plagiarismScore"), // 0-100 originality (100 = fully original)
+  plagiarismDetailsJson: json("plagiarismDetailsJson"), // { matches: [{passage, similarity, sourceUrl, sourceTitle}], summary: string }
   // Citations
-  citationsJson: json("citationsJson"),
+  citationsJson: json("citationsJson"), // { citations: [{original, format, isValid, errors: [{field, message, suggestion}], corrected}] }
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 

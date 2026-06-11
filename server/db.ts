@@ -26,6 +26,8 @@ export async function getDb() {
   return _db;
 }
 
+// ─── Users ───────────────────────────────────────────────────────────────────
+
 export async function upsertUser(user: InsertUser): Promise<void> {
   if (!user.openId) throw new Error("User openId is required for upsert");
   const db = await getDb();
@@ -65,9 +67,12 @@ export async function getUserByOpenId(openId: string) {
   return result[0];
 }
 
+// ─── Email Verification OTP ───────────────────────────────────────────────────
+
 export async function createEmailVerification(email: string, code: string, expiresAt: Date) {
   const db = await getDb();
   if (!db) throw new Error("DB unavailable");
+  // Invalidate previous codes for this email
   await db
     .update(emailVerifications)
     .set({ used: true })
@@ -99,6 +104,8 @@ export async function verifyEmailCode(email: string, code: string) {
   return true;
 }
 
+// ─── Verified Sessions ────────────────────────────────────────────────────────
+
 export async function createVerifiedSession(token: string, email: string, expiresAt: Date) {
   const db = await getDb();
   if (!db) throw new Error("DB unavailable");
@@ -122,6 +129,8 @@ export async function deleteVerifiedSession(token: string) {
   if (!db) return;
   await db.delete(verifiedSessions).where(eq(verifiedSessions.sessionToken, token));
 }
+
+// ─── Scans ────────────────────────────────────────────────────────────────────
 
 export async function createScan(data: InsertScan) {
   const db = await getDb();
@@ -157,6 +166,8 @@ export async function getScansByEmail(email: string, limit = 20, offset = 0) {
     .limit(limit)
     .offset(offset);
 }
+
+// ─── Scan Results ─────────────────────────────────────────────────────────────
 
 export async function upsertScanResult(data: InsertScanResult) {
   const db = await getDb();
@@ -205,6 +216,8 @@ export async function getScansWithResultsByEmail(email: string, limit = 20, offs
   );
   return results;
 }
+
+// ─── Cleanup ──────────────────────────────────────────────────────────────────
 
 export async function cleanupExpiredVerifications() {
   const db = await getDb();
