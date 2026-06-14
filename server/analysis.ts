@@ -77,8 +77,21 @@ export interface CitationResult {
 
 // ─── AI Detection ─────────────────────────────────────────────────────────────
 
+async function withRetry<T>(fn: () => Promise<T>, retries = 2): Promise<T> {
+  try {
+    return await fn();
+  } catch (error) {
+    if (retries > 0) {
+      console.warn(`[Analysis] Retrying operation... (${retries} left)`);
+      return withRetry(fn, retries - 1);
+    }
+    throw error;
+  }
+}
+
 async function detectAIContent(text: string): Promise<AIDetectionResult> {
-  const sentences = splitIntoSentences(text);
+  const sanitizedText = text.trim().replace(/[\x00-\x1F\x7F-\x9F]/g, "");
+  const sentences = splitIntoSentences(sanitizedText);
 
   const prompt = `You are an expert AI content detection system with deep knowledge of linguistic patterns that distinguish AI-generated text from human writing. Analyze the following text with the precision of a top-tier academic integrity tool.
 
@@ -94,7 +107,7 @@ ANALYSIS CRITERIA:
 
 TEXT TO ANALYZE:
 """
-${text.substring(0, 8000)}
+${sanitizedText.substring(0, 8000)}
 """
 
 SENTENCES TO SCORE INDIVIDUALLY:
@@ -129,18 +142,20 @@ Return a JSON object with this EXACT structure:
   }
 }`;
 
-  const response = await invokeLLM({
-    model: "claude-sonnet-4-5",
-    messages: [
-      {
-        role: "system",
-        content:
-          "You are a precise AI content detection engine. Always respond with valid JSON only, no markdown, no explanation outside the JSON.",
-      },
-      { role: "user", content: prompt },
-    ],
-    response_format: { type: "json_object" } as any,
-  });
+  const response = await withRetry(() =>
+    invokeLLM({
+      model: "claude-sonnet-4-5",
+      messages: [
+        {
+          role: "system",
+          content:
+            "You are a precise AI content detection engine. Always respond with valid JSON only, no markdown, no explanation outside the JSON.",
+        },
+        { role: "user", content: prompt },
+      ],
+      response_format: { type: "json_object" } as any,
+    })
+  );
 
   const raw = JSON.parse(response.choices[0].message.content as string);
 
@@ -179,7 +194,8 @@ Return a JSON object with this EXACT structure:
 // ─── Plagiarism Detection ─────────────────────────────────────────────────────
 
 async function detectPlagiarism(text: string): Promise<PlagiarismResult> {
-  const wordCount = text.split(/\s+/).filter(Boolean).length;
+  const sanitizedText = text.trim().replace(/[\x00-\x1F\x7F-\x9F]/g, "");
+  const wordCount = sanitizedText.split(/\s+/).filter(Boolean).length;
 
   const prompt = `You are an expert plagiarism detection system with access to a comprehensive database of academic papers, websites, books, and publications. Analyze the following text for potential plagiarism using deep semantic analysis.
 
@@ -223,18 +239,20 @@ Return a JSON object with this EXACT structure:
 
 IMPORTANT: Only flag passages that genuinely appear to be from external sources. Common phrases, standard academic language, and properly attributed content should NOT be flagged. Be precise and realistic.`;
 
-  const response = await invokeLLM({
-    model: "claude-sonnet-4-5",
-    messages: [
-      {
-        role: "system",
-        content:
-          "You are a precise plagiarism detection engine with deep knowledge of academic literature. Always respond with valid JSON only.",
-      },
-      { role: "user", content: prompt },
-    ],
-    response_format: { type: "json_object" } as any,
-  });
+  const response = await withRetry(() =>
+    invokeLLM({
+      model: "claude-sonnet-4-5",
+      messages: [
+        {
+          role: "system",
+          content:
+            "You are a precise plagiarism detection engine with deep knowledge of academic literature. Always respond with valid JSON only.",
+        },
+        { role: "user", content: prompt },
+      ],
+      response_format: { type: "json_object" } as any,
+    })
+  );
 
   const raw = JSON.parse(response.choices[0].message.content as string);
 
@@ -303,18 +321,20 @@ Return a JSON object with this EXACT structure:
   "summary": <overall summary of citation quality>
 }`;
 
-  const response = await invokeLLM({
-    model: "claude-sonnet-4-5",
-    messages: [
-      {
-        role: "system",
-        content:
-          "You are a precise academic citation validator. Always respond with valid JSON only, no markdown.",
-      },
-      { role: "user", content: prompt },
-    ],
-    response_format: { type: "json_object" } as any,
-  });
+  const response = await withRetry(() =>
+    invokeLLM({
+      model: "claude-sonnet-4-5",
+      messages: [
+        {
+          role: "system",
+          content:
+            "You are a precise academic citation validator. Always respond with valid JSON only, no markdown.",
+        },
+        { role: "user", content: prompt },
+      ],
+      response_format: { type: "json_object" } as any,
+    })
+  );
 
   const raw = JSON.parse(response.choices[0].message.content as string);
 
