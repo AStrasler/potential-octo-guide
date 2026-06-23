@@ -1,7 +1,7 @@
 import { TRPCError } from "@trpc/server";
 import { nanoid } from "nanoid";
 import { z } from "zod";
-import { COOKIE_NAME } from "../shared/const";
+import { COOKIE_NAME } from "@shared/const";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, router } from "./_core/trpc";
@@ -22,15 +22,21 @@ import {
 import { runAllChecks } from "./analysis";
 import { sendOTPEmail } from "./emailService";
 
+// ─── Allowlist ────────────────────────────────────────────────────────────────
+
 const ALLOWED_EMAILS = ["aaron.m.strasler@outlook.com"];
 
 function isEmailAllowed(email: string): boolean {
   const lower = email.toLowerCase().trim();
   if (ALLOWED_EMAILS.includes(lower)) return true;
+  // Allow any .edu email
   if (lower.endsWith(".edu") || lower.match(/\.edu$/)) return true;
+  // Also allow emails from .edu domains (e.g. user@university.edu)
   const domain = lower.split("@")[1] ?? "";
   return domain.endsWith(".edu");
 }
+
+// ─── Session middleware ───────────────────────────────────────────────────────
 
 const SESSION_COOKIE = "scholar_session";
 
@@ -56,6 +62,8 @@ const sessionProcedure = publicProcedure.use(async ({ ctx, next }) => {
   return next({ ctx: { ...ctx, verifiedEmail: email } });
 });
 
+// ─── Routers ──────────────────────────────────────────────────────────────────
+
 export const appRouter = router({
   system: systemRouter,
   auth: router({
@@ -67,6 +75,7 @@ export const appRouter = router({
     }),
   }),
 
+  // ─── Email Auth ─────────────────────────────────────────────────────────────
   emailAuth: router({
     sendCode: publicProcedure
       .input(z.object({ email: z.string().email() }))
@@ -78,11 +87,15 @@ export const appRouter = router({
             message: "Access is restricted to verified .edu email addresses.",
           });
         }
+        // Generate 6-digit code
         const code = String(Math.floor(100000 + Math.random() * 900000));
-        const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
+        const expiresAt = new Date(Date.now() + 15 * 60 * 1000); // 15 min
         await createEmailVerification(email, code, expiresAt);
         await cleanupExpiredVerifications();
+
+        // Send OTP via email service
         await sendOTPEmail(email, code).catch(console.error);
+
         return { success: true, message: "Verification code sent to your email." };
       }),
 
@@ -97,11 +110,14 @@ export const appRouter = router({
             message: "Invalid or expired verification code.",
           });
         }
+        // Create session
         const token = nanoid(64);
-        const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+        const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
         await createVerifiedSession(token, email, expiresAt);
+
         const isSecure = ctx.req.protocol === "https" ||
           (ctx.req.headers["x-forwarded-proto"] as string) === "https";
+
         ctx.res.cookie(SESSION_COOKIE, token, {
           httpOnly: true,
           secure: isSecure,
@@ -109,6 +125,7 @@ export const appRouter = router({
           path: "/",
           expires: expiresAt,
         });
+
         return { success: true, email };
       }),
 
@@ -132,6 +149,7 @@ export const appRouter = router({
     }),
   }),
 
+  // ─── Scans ──────────────────────────────────────────────────────────────────
   scan: router({
     submit: sessionProcedure
       .input(
@@ -149,7 +167,10 @@ export const appRouter = router({
           fileName: input.fileName,
           status: "processing",
         });
+
+        // Run analysis asynchronously
         runAllChecks(scanId, input.text, input.citations ?? []).catch(console.error);
+
         return { scanId };
       }),
 
@@ -180,7 +201,7 @@ export const appRouter = router({
         if (!scan || scan.email !== email) {
           throw new TRPCError({ code: "NOT_FOUND" });
         }
-        await updateScanStatus(input.scanId, "failed");
+        await updateScanStatus(input.scanId, "failed"); // soft delete
         return { success: true };
       }),
   }),

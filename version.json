@@ -1,4 +1,6 @@
 {
-  "timestamp": 1780985149862,
-  "version": "dbccf83d"
+  "rootDirectory": "client",
+  "rewrites": [
+    { "source": "/(.*)", "destination": "/index.html" }
+  ]
 }

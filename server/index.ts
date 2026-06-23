@@ -4,11 +4,12 @@ import { createServer } from "http";
 import net from "net";
 import multer from "multer";
 import { createExpressMiddleware } from "@trpc/server/adapters/express";
-import { registerOAuthRoutes } from "./oauth";
-import { registerStorageProxy } from "./storageProxy";
-import { appRouter } from "../routers";
-import { createContext } from "./context";
-import { serveStatic, setupVite } from "./vite";
+import { registerOAuthRoutes } from "./_core/oauth";
+import { registerStorageProxy } from "./_core/storageProxy";
+import { appRouter } from "./routers";
+import { createContext } from "./_core/context";
+import { serveStatic, setupVite } from "./_core/vite";
+import { cleanupExpiredVerifications } from "./db";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -76,6 +77,20 @@ async function startServer() {
 
   server.listen(port, () => {
     console.log(`Server running on http://localhost:${port}/`);
+    
+    // Schedule automated cleanup every hour
+    setInterval(async () => {
+      try {
+        console.log("[Cleanup] Running automated cleanup of expired verifications and sessions...");
+        await cleanupExpiredVerifications();
+        console.log("[Cleanup] Cleanup completed successfully.");
+      } catch (err) {
+        console.error("[Cleanup] Automated cleanup failed:", err);
+      }
+    }, 60 * 60 * 1000);
+    
+    // Also run once on startup
+    cleanupExpiredVerifications().catch(err => console.error("[Cleanup] Initial cleanup failed:", err));
   });
 }
 
