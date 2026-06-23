@@ -1,0 +1,7 @@
+{
+  "projectId": "your-project-id-here-if-known",
+  "orgId": "your-org-id-here-if-known",
+  "settings": {
+    "rootDirectory": "client"
+  }
+}
